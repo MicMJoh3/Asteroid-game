@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asteroid Shooter Game</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #000;
+    }
+
+    canvas {
+      display: block;
+      background-color: #111;
+      margin: 0 auto;
+    }
+
+    #mainMenu {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: #fff;
+    }
+
+    #startButton {
+      background-color: #00f;
+      color: #fff;
+      padding: 10px 20px;
+      font-size: 18px;
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+    }
+
+    #colorPicker {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div id="mainMenu">
+    <h1>Asteroid Shooter</h1>
+    <label for="colorPicker">Choose Spaceship Color:</label>
+    <input type="color" id="colorPicker" value="#00f">
+    <button id="startButton" onclick="startGame()">Start Game</button>
+  </div>
+  <canvas id="gameCanvas" style="display: none;"></canvas>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const colorPicker = document.getElementById('colorPicker');
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const spaceship = {
+      x: canvas.width / 2,
+      y: canvas.height - 80,
+      width: 50,
+      height: 50,
+      color: colorPicker.value,
+      speed: 8
+    };
+
+    const bullets = [];
+
+    const asteroids = [];
+
+    let stars = [];
+
+    let score = 0;
+
+    function getRandomNumber(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function getRandomStarColor() {
+      const colors = ['#fff', '#f0f', '#0ff', '#ff0'];
+      return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    function createStars() {
+      stars = [];
+      for (let i = 0; i < 100; i++) {
+        stars.push({
+          x: getRandomNumber(0, canvas.width),
+          y: getRandomNumber(0, canvas.height),
+          radius: getRandomNumber(1, 3),
+          color: getRandomStarColor()
+        });
+      }
+    }
+
+    function drawStars() {
+      stars.forEach(star => {
+        ctx.fillStyle = star.color;
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+      });
+    }
+
+    function drawSpaceship() {
+      ctx.fillStyle = spaceship.color;
+      ctx.beginPath();
+      ctx.moveTo(spaceship.x, spaceship.y - spaceship.height / 2);
+      ctx.lineTo(spaceship.x - spaceship.width / 2, spaceship.y + spaceship.height / 2);
+      ctx.lineTo(spaceship.x + spaceship.width / 2, spaceship.y + spaceship.height / 2);
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    function drawBullets() {
+      ctx.fillStyle = '#f00';
+      bullets.forEach(bullet => {
+        ctx.fillRect(bullet.x, bullet.y, 5, 15);
+      });
+    }
+
+    function drawAsteroids() {
+      asteroids.forEach(asteroid => {
+        ctx.fillStyle = asteroid.color;
+        ctx.beginPath();
+        ctx.arc(asteroid.x, asteroid.y, asteroid.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+      });
+    }
+
+    function drawScore() {
+      ctx.fillStyle = '#fff';
+      ctx.font = '24px Arial';
+      ctx.fillText('Score: ' + score, 20, 40);
+    }
+
+    function update() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      drawStars(); // Draw stars in the background
+      drawSpaceship();
+      drawBullets();
+      drawAsteroids();
+      drawScore();
+
+      // Update bullet positions
+      bullets.forEach(bullet => {
+        bullet.y -= 10;
+      });
+
+      // Update asteroid positions
+      asteroids.forEach(asteroid => {
+        asteroid.y += 4;
+      });
+
+      // Remove bullets that are out of the canvas
+      bullets.forEach((bullet, index) => {
+        if (bullet.y < 0) {
+          bullets.splice(index, 1);
+        }
+      });
+
+      // Check for collisions between bullets and asteroids
+      bullets.forEach(bullet => {
+        asteroids.forEach((asteroid, index) => {
+          const distance = Math.sqrt((bullet.x - asteroid.x)**2 + (bullet.y - asteroid.y)**2);
+          if (distance < asteroid.radius) {
+            bullets.splice(bullets.indexOf(bullet), 1);
+            asteroids.splice(index, 1);
+            score += 10;
+          }
+        });
+      });
+
+      // Check for collisions between spaceship and asteroids
+      asteroids.forEach(asteroid => {
+        const distance = Math.sqrt((spaceship.x - asteroid.x)**2 + (spaceship.y - asteroid.y)**2);
+        if (distance < asteroid.radius + spaceship.width / 2) {
+          gameOver();
+        }
+      });
+
+      // Spawn new asteroids randomly
+      if (Math.random() < 0.02) {
+        const asteroidRadius = Math.random() * 30 + 20;
+        const asteroidX = Math.random() * (canvas.width - asteroidRadius);
+        const asteroidY = -asteroidRadius;
+        const randomColor = getRandomColor();
+        asteroids.push({ x: asteroidX, y: asteroidY, radius: asteroidRadius, color: randomColor });
+      }
+
+      requestAnimationFrame(update);
+    }
+
+    function fireBullet() {
+      bullets.push({
+        x: spaceship.x,
+        y: spaceship.y - 15
+      });
+    }
+
+    function handleTouchMove(event) {
+      const touchX = event.touches[0].clientX;
+      spaceship.x = touchX;
+    }
+
+    function startGame() {
+      createStars(); // Generate stars
+      spaceship.color = colorPicker.value; // Set spaceship color
+      document.getElementById('mainMenu').style.display = 'none';
+      document.getElementById('gameCanvas').style.display = 'block';
+      window.addEventListener('resize', () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      });
+      window.addEventListener('touchmove', handleTouchMove);
+      window.addEventListener('touchstart', fireBullet);
+      update();
+    }
+
+    function getRandomColor() {
+      return '#' + Math.floor(Math.random()*16777215).toString(16); // Random hex color
+    }
+
+    function gameOver() {
+      alert('Game Over! Your Score: ' + score);
+      location.reload(); // Restart the game
+    }
+  </script>
+</
